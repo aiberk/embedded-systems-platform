@@ -1,3 +1,0 @@
-# Device Name
-
-## Explanation

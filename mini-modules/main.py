@@ -11,27 +11,30 @@ from temperature.fan_control import setup_fan, control_fan
 from temperature.led_control import setup_led, control_led
 
 # ----- Configuration -----
-MQTT_SERVER = "192.168.1.100"      # Replace with your MQTT broker address
+MQTT_SERVER = "192.168.1.100"  # Replace with your MQTT broker address
 MQTT_PORT = 1883
 MQTT_DATA_TOPIC = "sensors/raspi/data"
 MQTT_CONFIG_TOPIC = "devices/raspi/config"
 
 # Operational parameters
-TEMP_THRESHOLD = 28.0            # Temperature threshold in Celsius
-UPDATE_INTERVAL = 6              # Update interval in seconds
+TEMP_THRESHOLD = 28.0  # Temperature threshold in Celsius
+UPDATE_INTERVAL = 6  # Update interval in seconds
 
 # Device configuration (simulate persistent storage values)
 device_id = "RaspiDevice"
-fireFunctionA = True             # Flag to control the fan
-fireFunctionB = True             # Flag to control the LED
+fireFunctionA = True  # Flag to control the fan
+fireFunctionB = True  # Flag to control the LED
 
 # Global flag for graceful shutdown
 running = True
 
 # ----- Logging Configuration -----
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 
 # ----- Signal Handler for Graceful Shutdown -----
 def signal_handler(sig, frame):
@@ -39,8 +42,10 @@ def signal_handler(sig, frame):
     logging.info("Termination signal received. Shutting down...")
     running = False
 
+
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
+
 
 # ----- MQTT Callback Functions -----
 def on_connect(client, userdata, flags, rc):
@@ -49,6 +54,7 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe(MQTT_CONFIG_TOPIC)
     else:
         logging.error("Failed to connect to MQTT Broker, return code %d", rc)
+
 
 def on_message(client, userdata, msg):
     try:
@@ -60,6 +66,7 @@ def on_message(client, userdata, msg):
             update_configuration(config)
     except Exception as e:
         logging.error("Error processing MQTT message: %s", e)
+
 
 def update_configuration(config):
     global TEMP_THRESHOLD, UPDATE_INTERVAL, fireFunctionA, fireFunctionB
@@ -79,16 +86,18 @@ def update_configuration(config):
     except Exception as e:
         logging.error("Error updating configuration: %s", e)
 
+
 def connect_mqtt(client):
-    while not client.is_connected():
+    while not client.is_connected() and running:
         try:
             client_id = f"{device_id}_{random.randint(0, 1000)}"
             client.connect(MQTT_SERVER, MQTT_PORT, 60)
             logging.info("Attempting MQTT connection with client id: %s", client_id)
-            break
+            break  # Exit loop if connection is successful
         except Exception as e:
             logging.error("MQTT connection failed: %s. Retrying in 2 seconds...", e)
             time.sleep(2)
+
 
 # ----- Sensor Reading Function -----
 def read_temperature():
@@ -99,12 +108,13 @@ def read_temperature():
     """
     return random.uniform(20.0, 35.0)
 
+
 # ----- MQTT Data Publishing Function -----
 def publish_data(client, temperature):
     payload = {
         "device_id": device_id,
         "temperature": round(temperature, 2),
-        "timestamp": int(time.time() * 1000)
+        "timestamp": int(time.time() * 1000),
     }
     try:
         result = client.publish(MQTT_DATA_TOPIC, json.dumps(payload))
@@ -114,6 +124,7 @@ def publish_data(client, temperature):
             logging.error("Failed to publish MQTT message, result code: %s", result.rc)
     except Exception as e:
         logging.error("Error publishing MQTT message: %s", e)
+
 
 # ----- Device Logic Function -----
 def device_logic():
@@ -135,6 +146,7 @@ def device_logic():
         logging.error("Error in device logic: %s", e)
         return None
 
+
 # ----- Main Execution -----
 def main():
     global running
@@ -143,7 +155,11 @@ def main():
     setup_led()
 
     # Initialize MQTT client
-    client = mqtt.Client(f"{device_id}_{random.randint(0, 1000)}")
+    client = mqtt.Client(
+        client_id=f"{device_id}_{random.randint(0, 1000)}",
+        clean_session=True,
+        callback_api_version=mqtt.CallbackAPIVersion(1),
+    )
     client.on_connect = on_connect
     client.on_message = on_message
     connect_mqtt(client)
@@ -168,5 +184,6 @@ def main():
         GPIO.cleanup()
         logging.info("Program terminated gracefully.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

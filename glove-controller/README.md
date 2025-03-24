@@ -26,6 +26,8 @@ The communication layer is based on ROS Humble:
 
 ## V1: Gesture Recognition
 
+Sensor: MPU9250 IMU Sensor
+
 V1 is finished on March 12.
 - Set up communication framework using ROS
 - Install Ubuntu 22.04 on Raspberry Pi
@@ -53,6 +55,11 @@ The physical implementation looks like this:
 <img src="docs/readme/v1/prototype.jpg" alt="Physical Prototype" width="350"/>
 
 ## V2: Press Recognition
+
+Sensor: FSR402 Force Sensor
+
+<img src="docs/readme/v2/fsr402.jpg" alt="Force Sensor" width="350"/>
+
 
 Deadline: April.7
 

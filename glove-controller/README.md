@@ -26,6 +26,14 @@ The communication layer is based on ROS Humble:
 
 ## V1: Gesture Recognition
 
+V1 is finished on March 12.
+- Set up communication framework using ROS
+- Install Ubuntu 22.04 on Raspberry Pi
+- Configure internet and update pip
+- Initialize MPU9250 and create publisher script
+- Write callback function for real-time data
+- Implement bi-gesture recognition
+- Visualize data on PC via ROS
 
 In the first phase, this project will complete a smart glove that can recognize gestures.
 
@@ -44,3 +52,31 @@ The physical implementation looks like this:
 
 <img src="docs/readme/v1/prototype.jpg" alt="Physical Prototype" width="350"/>
 
+## V2: Press Recognition
+
+Deadline: April.7
+
+TO-DO List:
+- Add force sensor for "Pinch" (Press) detection
+- Add switch module for channel selection
+- Publish force sensor data in real-time and write call-back function
+
+## V3: Fist Recognition
+
+Deadline: April.28
+
+TO-DO List:
+- Add flexible sensors, finish publishing and callback functions
+- Implement "make a fist" and "release hand" gestures
+- (If time allows), recognize simple sign language
+
+## Integration with IoT Platform
+
+Deadline: April.28
+
+TO-DO List:
+- Test MQTT integration to control IoT devices
+
+## References
+
+See docs/papers

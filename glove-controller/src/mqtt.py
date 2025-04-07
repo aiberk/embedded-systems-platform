@@ -1,13 +1,22 @@
+#!/usr/bin/env python3
 import time
 import json
 import random
 import socket
 import os
+import threading
 import paho.mqtt.client as mqtt
+
+# -------------------------------
+# New: Import ROS related modules for subscribing to ROS topics in MQTT scripts
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String as ROSString
+# -------------------------------
 
 # Configuration parameters
 device_id = "zmpTGC3eGcrhixv8U7TRUJ"
-mqtt_mdns_name =  "192.168.0.18" # "platform-mmqtt.local"  # Attempt to resolve MQTT broker hostname via mDNS
+mqtt_mdns_name = "192.168.0.18"  # "platform-mmqtt.local"  # Attempt to resolve MQTT broker hostname via mDNS
 mqtt_data_topic = f"sensors/{device_id}/data"
 mqtt_config_topic = f"devices/{device_id}/config"
 
@@ -86,14 +95,52 @@ def on_message(client, userdata, msg):
         print("Error processing message:", e)
 
 
-def publish_data(client):
+# -------------------------------
+# New: Define a ROS subscription node to receive ROS messages published by the GUI
+class GuiSubscriber(Node):
+    def __init__(self):
+        super().__init__('gui_subscriber')
+        self.subscription = self.create_subscription(
+            ROSString,
+            'GUI',
+            self.gui_callback,
+            10
+        )
+        self.latest_gui_data = None  # store newest GUI data
+
+    def gui_callback(self, msg: ROSString):
+        try:
+            data = json.loads(msg.data)  # Parsing JSON data posted by GUI
+            self.latest_gui_data = data
+            self.get_logger().info(f"Received GUI data: {data}")
+        except Exception as e:
+            self.get_logger().error("Error parsing GUI message: " + str(e))
+# -------------------------------
+
+# Modification: The original publish_data function adds the GUI data part.
+# Here we extract the contents of the GUI data separately and display them independently as gui-click, gui-motion, gui-channel
+def publish_data(client, gui_data):
     generatedNumber = random.randint(0, 999)
+    # If there is GUI data, extract each field separately; otherwise use "error"
+    if gui_data is not None:
+        gui_click = gui_data.get("click", "error")
+        gui_motion = gui_data.get("motion", "error")
+        gui_channel = gui_data.get("channel", "error")
+    else:
+        gui_click = "error"
+        gui_motion = "error"
+        gui_channel = "error"
+        
+    # Construct a published message, including both random numbers and GUI data (displayed separately)
     payload = {
         "device_id": device_id,
         "timestamp": int(time.time() * 1000),  # Millisecond timestamp
         "data": {
             "generatedNumber": generatedNumber,
-            "testBool": True
+            "testBool": True,
+            "gui-click": gui_click,       # NEW: GUI click status, "pressed", "not_pressed"
+            "gui-motion": gui_motion,     # NEW: GUI motion status, "lifting", "dropping", "stationary"
+            "gui-channel": gui_channel    # NEW: GUI channel status: "1", "2", "3"
         }
     }
     payload_str = json.dumps(payload)
@@ -108,6 +155,14 @@ def main():
     global updateInterval
 
     load_preferences()
+
+    # -------------------------------
+    # New: Initialize ROS and create a GUI subscription node to receive messages from the GUI on ROS
+    rclpy.init()
+    gui_subscriber = GuiSubscriber()
+    ros_thread = threading.Thread(target=rclpy.spin, args=(gui_subscriber,), daemon=True)
+    ros_thread.start()
+    # -------------------------------
 
     # Resolve MQTT broker IP (if local system supports mDNS resolution, it will be used)
     broker_ip = resolve_mqtt_broker()
@@ -130,19 +185,22 @@ def main():
     # Start background thread for MQTT network loop
     client.loop_start()
 
-    last_publish_time = time.time() * 1000  # Millisecond timer
+    last_publish_time = time.time() * 1000  # 毫秒计时器
     try:
         while True:
             current_time = time.time() * 1000
             if current_time - last_publish_time >= updateInterval:
                 last_publish_time = current_time
-                publish_data(client)
+                # Modification: In each release cycle, take the latest GUI data and publish it together with the random number data
+                publish_data(client, gui_subscriber.latest_gui_data)
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("Exiting program...")
     finally:
         client.loop_stop()
         client.disconnect()
+        # shutdown ROS node
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":

@@ -7,35 +7,12 @@ The Smart Glove module is a sub-module in out IoT Platform project. It will cont
 - Press recognition.
 - Integrated with IoT platform.
 
-## Framework
-
-The framework of the hardwares are:
-
-<img src="docs/readme/v1/framework.png" alt="Framework Structure" width="450"/>
-
-The repo here mainly is about computing server side, glove side is responsible for collecting sensor data and publish them into ROS network and allow computing center to calculate.
-
-The code deployed on the Raspberry Pi 4B (Glove Side) is stored separately in the following repository:
-
-https://github.com/jeffliulab/SmartGlove_GloveSide
-
-The communication layer is based on ROS Humble:
-
-<img src="docs/readme/v1/ros.png" alt="Framework Structure" width="450"/>
+<img src="docs/readme/v2/glove.png" alt="Glove" width="450"/>
 
 
-## V1: Gesture Recognition
+## Prototype Overview
 
-Sensor: MPU9250 IMU Sensor
-
-V1 is finished on March 12.
-- Set up communication framework using ROS
-- Install Ubuntu 22.04 on Raspberry Pi
-- Configure internet and update pip
-- Initialize MPU9250 and create publisher script
-- Write callback function for real-time data
-- Implement bi-gesture recognition
-- Visualize data on PC via ROS
+### Framework
 
 In the first phase, this project will complete a smart glove that can recognize gestures.
 
@@ -45,45 +22,80 @@ The configuration structure is as follows:
 
 - [Demo Video](https://youtube.com/shorts/qYl0_Sqa9_Q?si=NIhDoCjUwTQr8ySr)
 
+<img src="docs/readme/v2/framework.png" alt="Framework Structure" width="450"/>
+
+The ROS framework is:
+
+<img src="docs/readme/v1/ros.png" alt="Framework Structure" width="450"/>
+
+### Phisical Implementation
+
+The physical prototype looks like this:
+
+<img src="docs/readme/v2/all_sensors.jpg" alt="Physical Prototype" width="350"/>
+
+The code deployed on the Raspberry Pi 4B is stored separately in the following repository:
+
+https://github.com/jeffliulab/SmartGlove_GloveSide
+
+The wiring diagram is shown below:
+
+- Pico W
+```
+(Pin 36) 3V3(OUT) ---- [ FSR402 ] ----+---- (Pin 31) GPIO26 (ADC0)
+                                      |
+                              [ 10kΩ Resistor ]
+                                      |
+                                  (Pin 38) GND
+```
+
+- Raspberry Pi 4b
+```
+PICO W: USB-A
+Power: USB-C
+MPU9250:    VCC
+            GND
+            SCL
+            SDA
+
+```
+
+### GUI
+
+When running the essential scripts, there is also a GUI window recognize the status of sensors:
+
+<img src="docs/readme/v2/gui_1.png" alt="Physical Prototype" width="350"/>
+
+<img src="docs/readme/v2/gui_2.png" alt="Physical Prototype" width="350"/>
+
+## Gesture Recognition Module
+
+### Recognize the gestures (IMU Sensor)
+
 Using gravity detection from the MPU9250, we've implemented UP and DOWN detection:
 
 <img src="docs/readme/v1/detect_1.png" alt="Upward Detection" width="350"/> <img src="docs/readme/v1/detect_2.png" alt="Downward Detection" width="350"/>
 
+### Recgnize the press (Force Sensor)
 
-The physical implementation looks like this:
-
-<img src="docs/readme/v1/prototype.jpg" alt="Physical Prototype" width="350"/>
-
-## V2: Press Recognition
-
-Sensor: FSR402 Force Sensor
+Using force sensor from FSR402:
 
 <img src="docs/readme/v2/fsr402.jpg" alt="Force Sensor" width="350"/>
 
+<img src="docs/readme/v2/fsr402_real.jpg" alt="Force Sensor" width="350"/>
 
-Deadline: April.7
+<img src="docs/readme/v2/all_sensors.jpg" alt="Force Sensor" width="350"/>
 
-TO-DO List:
-- Add force sensor for "Pinch" (Press) detection
-- Add switch module for channel selection
-- Publish force sensor data in real-time and write call-back function
+FSR402 output analogue data, so the main.py is uploaded into PICO W:
 
-## V3: Fist Recognition
+```python
+import serial
 
-Deadline: April.28
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+while True:
+    line = ser.readline().decode('utf-8').strip()
+    if line:
+        print(line)
+```
 
-TO-DO List:
-- Add flexible sensors, finish publishing and callback functions
-- Implement "make a fist" and "release hand" gestures
-- (If time allows), recognize simple sign language
-
-## Integration with IoT Platform
-
-Deadline: April.28
-
-TO-DO List:
-- Test MQTT integration to control IoT devices
-
-## References
-
-See docs/papers
+On Raspberry Pi 4b, use serial to read the data.

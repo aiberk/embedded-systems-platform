@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-click_gui.py
-ROS2 订阅者 + GUI 示例：
-订阅 "click" 和 "motion/detection" 话题，并同时显示两个状态。
+ROS2 Subscriber + GUI Example:
+Subscribe to "click" and "motion/detection" topics, and display both states simultaneously.
+Additional: Add a channel switch button to the GUI, and publish the current GUI state to the "GUI" topic when the state is updated
 """
 
 import rclpy
@@ -10,12 +10,13 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import tkinter as tk
 import threading
+import json
 
 class ClickListener(Node):
     def __init__(self):
         super().__init__('click_listener')
         
-        # 订阅 "click" 话题
+        # subscribe "click" topic
         self.subscription_click = self.create_subscription(
             String,
             'click',
@@ -23,7 +24,7 @@ class ClickListener(Node):
             10
         )
         
-        # 订阅 "motion/detection" 话题
+        # subscribe "motion/detection" topic
         self.subscription_motion = self.create_subscription(
             String,
             'motion/detection',
@@ -31,57 +32,98 @@ class ClickListener(Node):
             10
         )
         
-        self.click_state = "FALSE"      # 默认按压状态
-        self.motion_state = "STATIONARY" # 默认运动状态
+        self.click_state = "FALSE"      # DEFAULT PRESS STATUS
+        self.motion_state = "STATIONARY" # DEFAULT MOTION STATUS
 
+        self.channel = 1  # DEFAULT CHANNEL 1
+
+        # Create a publisher to publish GUI status messages for use by MQTT
+        self.publisher_gui = self.create_publisher(String, 'GUI', 10)
+        
     def click_callback(self, msg: String):
         self.click_state = msg.data
-        self.get_logger().info(f"收到按压状态: {self.click_state}")
+        self.get_logger().info(f"RECEIVE CLICK STATE: {self.click_state}")
 
     def motion_callback(self, msg: String):
         self.motion_state = msg.data
-        self.get_logger().info(f"收到运动状态: {self.motion_state}")
+        self.get_logger().info(f"RECEIVE MOTION STATE: {self.motion_state}")
 
 def ros_spin(node):
     rclpy.spin(node)
 
 def main():
-    # 初始化 ROS2 节点
+    # initialize ROS2 node
     rclpy.init()
     click_listener = ClickListener()
     
-    # 单独线程运行 ROS2 spin，避免阻塞 GUI 主循环
+    # Run ROS2 spin in a separate thread to avoid blocking the GUI main loop
+    # (单独线程运行 ROS2 spin，避免阻塞 GUI 主循环)
     ros_thread = threading.Thread(target=ros_spin, args=(click_listener,), daemon=True)
     ros_thread.start()
     
-    # 创建 Tkinter GUI 窗口
+    # create Tkinter GUI window
     root = tk.Tk()
     root.title("Click & Motion State Detector")
     
-    # 创建两个 Label 显示点击状态和运动状态
+    # create Label, show click status 
     label_click = tk.Label(root, text="Not Pressed", font=("Arial", 32), width=20, height=3, bg="green")
     label_click.pack(padx=20, pady=10)
 
+    # create Label, show motion status 
     label_motion = tk.Label(root, text="STATIONARY", font=("Arial", 32), width=20, height=3, bg="yellow")
     label_motion.pack(padx=20, pady=10)
     
+    # add channel switch module: 1, 2, 3
+    def switch_channel():
+        # 按顺序切换：1 -> 2 -> 3 -> 1
+        if click_listener.channel == 1:
+            click_listener.channel = 2
+        elif click_listener.channel == 2:
+            click_listener.channel = 3
+        else:
+            click_listener.channel = 1
+        btn_channel.config(text=f"Channel: {click_listener.channel}")
+        click_listener.get_logger().info(f"Channel switched to: {click_listener.channel}")
+
+    btn_channel = tk.Button(root, text=f"Channel: {click_listener.channel}", font=("Arial", 24), command=switch_channel)
+    btn_channel.pack(padx=20, pady=10)
+    
     def update_labels():
-        # 更新按压状态
+        # update press status
         if click_listener.click_state == "TRUE":
             label_click.config(text="Pressed", bg="red")
+            publish_click = "pressed"
         else:
             label_click.config(text="Not Pressed", bg="green")
+            publish_click = "not_pressed"
 
-        # 更新运动状态
+        # update motion status
         if click_listener.motion_state in ["LIFT_START", "LIFT_COMPLETE"]:
             label_motion.config(text="LIFTING", bg="red")
+            publish_motion = "lifting"
         elif click_listener.motion_state in ["DROP_START", "DROP_COMPLETE"]:
             label_motion.config(text="DROPPING", bg="blue")
+            publish_motion = "dropping"
         elif click_listener.motion_state == "STATIONARY":
             label_motion.config(text="STATIONARY", bg="yellow")
+            publish_motion = "stationary"
         else:
             label_motion.config(text="UNKNOWN", bg="grey")
+            publish_motion = "error"
 
+        # 获取当前频道信息8
+        publish_channel = str(click_listener.channel)
+        
+        # 构造要发布的消息
+        payload = {
+            "click": publish_click,
+            "motion": publish_motion,
+            "channel": publish_channel
+        }
+        msg = String()
+        msg.data = json.dumps(payload)
+        click_listener.publisher_gui.publish(msg)
+        
         # 每隔 100 毫秒更新一次
         root.after(100, update_labels)
     
@@ -94,86 +136,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# #!/usr/bin/env python3
-# """
-# click_gui.py
-# ROS2 订阅者 + GUI 示例：
-# 订阅 "click" 话题，根据接收到的点击状态显示对应的动画状态。
-# """
-
-# import rclpy
-# from rclpy.node import Node
-# from std_msgs.msg import String
-# import tkinter as tk
-# import threading
-
-# class ClickListener(Node):
-#     def __init__(self):
-#         super().__init__('click_listener')
-#         # 订阅 "click" 话题
-#         self.subscription = self.create_subscription(
-#             String,
-#             'click',
-#             self.listener_callback,
-#             10
-#         )
-#         self.subscription  # 防止未使用变量警告
-#         self.click_state = "FALSE"  # 默认状态
-
-#     def listener_callback(self, msg: String):
-#         self.click_state = msg.data
-#         self.get_logger().info(f"收到点击状态: {self.click_state}")
-
-# def ros_spin(node):
-#     rclpy.spin(node)
-
-# def main():
-#     # 初始化 ROS2 节点
-#     rclpy.init()
-#     click_listener = ClickListener()
-    
-#     # 单独线程运行 ROS2 spin，避免阻塞 GUI 主循环
-#     ros_thread = threading.Thread(target=ros_spin, args=(click_listener,), daemon=True)
-#     ros_thread.start()
-    
-#     # 创建 Tkinter GUI 窗口
-#     root = tk.Tk()
-#     root.title("Click State Detector")
-    
-#     # 创建一个 Label 显示点击状态
-#     label = tk.Label(root, text="Not Pressed", font=("Arial", 32), width=20, height=5, bg="green")
-#     label.pack(padx=20, pady=20)
-    
-#     def update_label():
-#         # 根据 click_listener.click_state 更新 Label 的显示和背景颜色
-#         if click_listener.click_state == "TRUE":
-#             label.config(text="Pressed", bg="red")
-#         else:
-#             label.config(text="Not Pressed", bg="green")
-#         # 每隔 100 毫秒更新一次
-#         root.after(100, update_label)
-    
-#     update_label()  # 启动定时器
-#     root.mainloop()
-    
-#     # GUI 关闭后清理 ROS2 节点
-#     click_listener.destroy_node()
-#     rclpy.shutdown()
-
-# if __name__ == '__main__':
-#     main()

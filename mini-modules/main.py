@@ -6,12 +6,25 @@ import signal
 import sys
 import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
+from threading import Thread
 
+from sensors.temperatur import read_temperature
+from sensors.humidity import read_humidity
+from sensors.light import read_light
+from sensors.pressure import read_pressure
 from temperature.fan_control import setup_fan, control_fan
 from temperature.led_control import setup_led, control_led
 
+
+"""
+3 terminal
+    a) mqtt shoot commands (mqtt server)
+    b) logging command (look at the pictures in phone)
+    c) program running 
+"""
+
 # ----- Configuration -----
-MQTT_SERVER = "192.168.1.100"  # Replace with your MQTT broker address
+MQTT_SERVER = "127.0.0.1"  # Replace with your MQTT broker address
 MQTT_PORT = 1883
 MQTT_DATA_TOPIC = "sensors/raspi/data"
 MQTT_CONFIG_TOPIC = "devices/raspi/config"
@@ -19,6 +32,7 @@ MQTT_CONFIG_TOPIC = "devices/raspi/config"
 # Operational parameters
 TEMP_THRESHOLD = 28.0  # Temperature threshold in Celsius
 UPDATE_INTERVAL = 6  # Update interval in seconds
+BUTTON_GPIO = 17  # GPIO pin where Grove Button is connected
 
 # Device configuration (simulate persistent storage values)
 device_id = "RaspiDevice"
@@ -113,7 +127,12 @@ def read_temperature():
 def publish_data(client, temperature):
     payload = {
         "device_id": device_id,
-        "temperature": round(temperature, 2),
+        "data": {
+            "temperature": read_temperature(),
+            "humidity": read_humidity(),
+            "light": read_light(),
+            "pressure": read_pressure()
+        },
         "timestamp": int(time.time() * 1000),
     }
     try:
@@ -146,6 +165,41 @@ def device_logic():
         logging.error("Error in device logic: %s", e)
         return None
 
+def button_pressed(client):
+    global fireFunctionA, fireFunctionB
+    fireFunctionA = not fireFunctionA
+    fireFunctionB = not fireFunctionB
+
+    logging.info("Button pressed! Toggled fireFunctionA and fireFunctionB.")
+    logging.info(f"fireFunctionA is now {fireFunctionA}, fireFunctionB is now {fireFunctionB}")
+
+    payload = {
+        "device_id": device_id,
+        "event": "button_pressed",
+        "timestamp": int(time.time() * 1000),
+        "fireFunctionA": fireFunctionA,
+        "fireFunctionB": fireFunctionB,
+    }
+
+    try:
+        result = client.publish("events/button", json.dumps(payload))
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            logging.info("Button press event published to MQTT.")
+        else:
+            logging.error("Failed to publish button event, result code: %s", result.rc)
+    except Exception as e:
+        logging.error("Error publishing button event: %s", e)
+
+
+def setup_button(client):
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BUTTON_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
+    def button_callback(channel):
+        button_pressed(client)
+
+    GPIO.add_event_detect(BUTTON_GPIO, GPIO.RISING, callback=button_callback, bouncetime=300)
+
 
 # ----- Main Execution -----
 def main():
@@ -153,6 +207,7 @@ def main():
     # Setup GPIO for fan and LED
     setup_fan()
     setup_led()
+    setup_button(client)
 
     # Initialize MQTT client
     client = mqtt.Client(

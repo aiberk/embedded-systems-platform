@@ -33,15 +33,13 @@ def detect_emotions(f_name):
 	#detector= 'centerface'
 	d= DeepFace.analyze(img_path= f_name, actions= ['emotion'], detector_backend=detector)
 	print(d)
-	return d
+	return [i['dominant_emotion'] for i in d]
 	
 def run_proc():
 	img = take_photo(2)
 	emotions = detect_emotions(img)
 	print('final emotions')
-	t = [i['dominant_emotion'] for i in emotions]
-	print(t)
-	return t
+	return emotions
 	
 if __name__ =='__main__':
 	'''take_photo(None)'''

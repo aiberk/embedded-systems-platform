@@ -1,17 +1,17 @@
 from config import *
 from mqtt_client import setup_client, publish_data
-from hardware import setup_devices, trigger_devices
+from hardware import setup_devices
 from signal import pause
 import time
 
 def on_button_press():
-    trigger_devices()
+    print("Button was pressed")
     payload = {
         "device_id": device_id,
         "timestamp": int(time.time() * 1000),
         "data": {
             "ping": False,
-            "IsClicked": True
+            "isClicked": True
         }
     }
     publish_data(payload)

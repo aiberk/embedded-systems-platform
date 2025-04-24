@@ -4,9 +4,10 @@ import random
 import socket
 import os
 import paho.mqtt.client as mqtt
+import camera_controller
 
 # Configuration parameters
-device_id = "se8gTaFEgcRDgP8EYNF7xW"
+device_id = "ksyhwGSfpMJ2kqt5dB4ydH"
 mqtt_mdns_name = "platform.local" # "192.168.0.104" # "platform-mmqtt.local"  # Attempt to resolve MQTT broker hostname via mDNS
 mqtt_data_topic = f"sensors/{device_id}/data"
 mqtt_config_topic = f"devices/{device_id}/config"
@@ -103,8 +104,25 @@ def publish_data(client):
     else:
         print("Data publish failed, error code:", result.rc)
 
+def publish_emotion(client, emotion):
+    payload = {
+        "device_id": device_id,
+        "timestamp": int(time.time() * 1000),  # Millisecond timestamp
+        "data": {
+            "emotion": emotion,
+            "testBool": True
+        }
+    }
+    payload_str = json.dumps(payload)
+    result = client.publish(mqtt_data_topic, payload_str)
+    if result.rc == mqtt.MQTT_ERR_SUCCESS:
+        print("Data published:", payload_str)
+    else:
+        print("Data publish failed, error code:", result.rc)
+
 
 def main():
+    emotion = camera_controller.detect_emotions('the_guys.jpg')[0]
     global updateInterval
 
     load_preferences()
@@ -129,14 +147,12 @@ def main():
 
     # Start background thread for MQTT network loop
     client.loop_start()
-
-    last_publish_time = time.time() * 1000  # Millisecond timer
+    published = False
     try:
         while True:
-            current_time = time.time() * 1000
-            if current_time - last_publish_time >= updateInterval:
-                last_publish_time = current_time
-                publish_data(client)
+            if not published:
+                publish_emotion(client, emotion)
+                published = True
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("Exiting program...")
@@ -144,6 +160,7 @@ def main():
         client.loop_stop()
         client.disconnect()
 
+    
 
 if __name__ == "__main__":
     main()

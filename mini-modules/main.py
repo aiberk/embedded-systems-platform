@@ -1,27 +1,20 @@
-from config import *
-from mqtt_client import setup_client, publish_data
-from hardware import setup_devices
-from signal import pause
-import time
+from core.mqtt_client import MQTTDeviceClient
+from devices.fan_device import handle_message as fan_handler
+from devices.button_device import handle_message as button_handler, setup as setup_button, handle_button_press
+from config.fan_config import config as fan_config
+from config.button_config import config as button_config
 
-def on_button_press():
-    print("Button was pressed")
-    payload = {
-        "device_id": device_id,
-        "timestamp": int(time.time() * 1000),
-        "data": {
-            "ping": False,
-            "isClicked": True
-        }
-    }
-    publish_data(payload)
+fan_client = MQTTDeviceClient(fan_config, fan_handler)
+button_client = MQTTDeviceClient(button_config, button_handler)
 
 def main():
-    load_preferences()
-    setup_client()
-    setup_devices(on_button_press)
-    print("Ready. Waiting for button press...")
-    pause()  # Keeps the program running for GPIO callbacks
+    fan_client.start()
+    button_client.start()
+    setup_button(lambda: handle_button_press(button_client.publish, button_config))
+
+    import time
+    while True:
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()

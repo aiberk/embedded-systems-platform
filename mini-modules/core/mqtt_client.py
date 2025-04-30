@@ -12,6 +12,7 @@ class MQTTDeviceClient:
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
+            client.subscribe(self.config["data_topic"])
             print(f"[{self.config['device_id']}] Connected to broker")
             for topic in self.config["subscriptions"]:
                 client.subscribe(topic)
@@ -20,6 +21,7 @@ class MQTTDeviceClient:
             print("MQTT connect failed:", rc)
 
     def on_message(self, client, userdata, msg):
+        print("here for config: ", self.config)
         try:
             payload = json.loads(msg.payload.decode())
             self.message_handler(msg.topic, payload, self)

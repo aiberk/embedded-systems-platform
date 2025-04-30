@@ -21,7 +21,6 @@ class MQTTDeviceClient:
             print("MQTT connect failed:", rc)
 
     def on_message(self, client, userdata, msg):
-        print("here for config: ", self.config)
         try:
             payload = json.loads(msg.payload.decode())
             self.message_handler(msg.topic, payload, self)

@@ -23,14 +23,14 @@ def handle_message(topic, payload, mqtt_client):
     }
     """
     try:
-        print(f"[LCD] Received payload: {payload}")
         emotion = payload.get("data", {}).get("emotion", "No emotion")
 
         lcd.clear()
         lcd.setCursor(0, 0)
-        lcd.write("Emotion:")
+        if "clicked" not in str(emotion).lower():
+            lcd.write("Emotion:")
         lcd.setCursor(1, 0)
-        lcd.write(emotion[:16])
+        lcd.write(str(emotion)[:16])
         print(f"[LCD] Displayed emotion: {emotion}")
 
     except Exception as e:

@@ -1,7 +1,7 @@
 from hardware.gpio import fan
 
 def control_fan(state):
-    if state:
+    if state == "true":
         fan.on()
         print("Fan ON")
     else:
@@ -9,10 +9,9 @@ def control_fan(state):
         print("Fan OFF")
 
 def handle_message(topic, payload, mqtt_client):
-    if "fan" in payload:
-        control_fan(payload["fan"])
-        mqtt_client.publish(mqtt_client.config["data_topic"], {
-            "device_id": mqtt_client.config["device_id"],
-            "timestamp": int(__import__('time').time() * 1000),
-            "data": {"fan": payload["fan"]}
-        })
+    try:
+        data = payload.get("data", {})
+        if "fan" in data:
+            control_fan(data["fan"])
+    except Exception as e:
+        print(f"[FAN] Error reading payload: {e}")

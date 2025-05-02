@@ -1,8 +1,0 @@
-name: embedded-systems
-channels:
-  - defaults
-dependencies:
-  - python=3.8
-  - pip
-  - paho-mqtt
-  - RPi.GPIO

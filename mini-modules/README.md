@@ -1,92 +1,139 @@
 # Mini-Modules and Integration
 
-## Overview
+This project demonstrates a complete embedded systems solution using MQTT to coordinate communication between multiple hardware components. The system includes a button (input device), and three actuators: a fan (LED), a buzzer, and an LCD display. These devices interact through an MQTT broker to simulate a responsive smart environment using Raspberry Pi.
 
-This project demonstrates the seamless integration of mini-modules into an MQTT-based IoT system. Our primary goal is to showcase sensor-to-actuator communication and multi-modal control using a variety of hardware components. In this release, we have successfully completed the Temperature-Triggered Fan and LED Control module. Future enhancements will include additional modules for ambient light adjustment and gesture-controlled environmental overrides.
 
-## Completed Module
+## 📡 Project Overview
 
-1. **Temperature-Triggered Fan and LED Control**  
-   This module monitors ambient temperature (and, optionally, humidity) via a sensor connected to the MQTT hub. When the temperature exceeds a predefined threshold, it triggers a small fan and activates LED status indicators. This demonstrates real-time sensor monitoring, automated control, and MQTT-based data communication.
+This system is structured around MQTT-based publish/subscribe messaging. When the **button is pressed**, a message is published to a topic subscribed by the **fan**, **buzzer**, and **LCD** devices. Each device responds to messages according to its role:
 
-## In-Progress / Future Modules
+- **Fan (LED)**: Turns ON/OFF on command.
+- **Buzzer**: Plays melodies by frequency.
+- **LCD Display**: Shows text (e.g., emotion or status).
 
-2. **Ambient Light and Environmental Adjustment Module**  
-   *Future work:* This module will adjust the brightness of an LCD screen and LED indicators based on environmental conditions. When critical temperature or humidity levels are detected, the system will display alerts and dynamically modify display settings.
+Each device has a unique `device_id` and MQTT configuration.
 
-3. **Gesture-Controlled Environmental Overrides**  
-   *Future work:* Leveraging the Smart Glove's sensor suite (e.g., flex sensors, MPU6050, FSR402 force sensors), this module will enable manual override of automated actions. A specific gesture, such as a swipe or pinch, will allow users to disable or adjust actuator responses (e.g., turning off the fan) regardless of sensor readings.
 
-## Hardware Summary
+## 🧰 Hardware Components
 
-The project uses the following hardware components:
+| Device       | GPIO Pin | Description                        |
+|--------------|----------|------------------------------------|
+| Button       | GPIO 17  | Input button (triggers message)    |
+| Fan (LED)    | GPIO 22  | LED used to simulate a fan         |
+| Buzzer       | GPIO 18  | PWM pin used for tone generation   |
+| LCD Display  | I2C (SDA: GPIO 2, SCL: GPIO 3) | Displays text via Grove JHD1802 |
 
-- **Core Computing Modules:**  
-  - Raspberry Pi 4 or 5 (or ESP-32 for sensor interfacing)
 
-- **Sensors:**  
-  - Temperature Sensor (and optionally a Humidity Sensor)
+## 🗂️ Project Structure
 
-- **Actuators:**  
-  - Small Fan  
-  - LEDs (used as status indicators)
+```
 
-- **Supporting Equipment:**  
-  - Stable Battery (or power supply) for the core computing module  
-  - Basic wiring and interfacing components
+.
+├── main.py                     # Main runner script
+├── config/                     # MQTT topics and device IDs
+│   ├── button\_config.py
+│   ├── fan\_config.py
+│   ├── buzzer\_config.py
+│   └── lcd\_config.py
+├── devices/                    # Device logic
+│   ├── button\_device.py
+│   ├── fan\_device.py
+│   ├── buzzer\_device.py
+│   └── lcd\_device.py
+├── core/                       # MQTT client and broker resolver
+│   ├── mqtt\_client.py
+│   └── broker.py
+└── hardware/
+└── gpio.py                     # GPIO pin mapping
 
-*Note: Only hardware directly used for the temperature-based module is listed. Additional components for future modules will be integrated later.*
+````
 
-## Getting Started
+## ⚙️ Software Setup
 
 ### Prerequisites
 
-- Python 3.8 (or later) installed via Conda.
-- An MQTT broker (e.g., Mosquitto) accessible at the specified MQTT server address.
-- For testing on non-Raspberry Pi systems (e.g., macOS), a dummy `RPi.GPIO` module is provided.
-
-### Setting Up the Environment
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone https://github.com/yourusername/embedded-systems-platform.git
-   cd embedded-systems-platform/mini-modules
-   ```
-
-2. **Create and Activate the Conda Environment**
-
-   Run:
-
-   ```bash
-   conda env create -f environment.yml
-   conda activate embedded-systems
-   ```
-
-### Project Structure
-
-```
-.
-├── main.py
-└── temperature
-    ├── __init__.py
-    ├── fan_control.py
-    └── led_control.py
-```
-
-A dummy `RPi` package is also provided for testing on non-Raspberry Pi platforms.
-
-### Running the Project
-
-From the root directory, execute:
+- Raspberry Pi OS (Lite or Full)
+- Python 3.8+
+- MQTT broker running (e.g., Mosquitto)
+- Python packages:
 
 ```bash
-python mini-modules/main.py
+pip install paho-mqtt gpiozero grove.py
+````
+
+### Clone and Run
+
+```bash
+git clone https://github.com/aiberk/embedded-systems-platform.git
+cd embedded-systems-platform/mini-modules
+python main.py
 ```
 
-This will:
-- Initialize the GPIO pins for the fan and LED.
-- Connect to the MQTT broker.
-- Simulate sensor readings.
-- Control the fan and LED based on the temperature threshold.
-- Publish sensor data to the MQTT broker at regular intervals.
+## 🔁 System Behavior
+
+### 📥 Button
+
+When pressed, it sends the following MQTT payload:
+
+```json
+{
+  "device_id": "jLDT3JpuGeC6Ard52HYkHN",
+  "timestamp": 1690000000000,
+  "data": {
+    "ping": false,
+    "isClicked": true
+  }
+}
+```
+
+### 🌀 Fan (LED)
+
+Listens for:
+
+```json
+{
+  "data": {
+    "fan": "true"
+  }
+}
+```
+
+Turns ON if `"true"`, OFF if `"false"`.
+
+### 🔊 Buzzer
+
+Listens for:
+
+```json
+{
+  "data": {
+    "notes": [440, 494, 523],
+    "duration": 0.3
+  }
+}
+```
+
+Plays a tone for each note.
+
+### 📺 LCD Display
+
+Listens for:
+
+```json
+{
+  "data": {
+    "emotion": "happy"
+  }
+}
+```
+
+Displays `Emotion: happy` or any 16-character message.
+
+
+## 🧩 Extensibility
+
+To add new devices:
+
+1. Create a new device module under `devices/`.
+2. Add a config file under `config/`.
+3. Register it in `main.py` using `MQTTDeviceClient`.

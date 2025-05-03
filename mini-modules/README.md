@@ -31,20 +31,20 @@ Each device has a unique `device_id` and MQTT configuration.
 .
 ├── main.py                     # Main runner script
 ├── config/                     # MQTT topics and device IDs
-│   ├── button\_config.py
-│   ├── fan\_config.py
-│   ├── buzzer\_config.py
-│   └── lcd\_config.py
+│   ├── button_config.py
+│   ├── fan_config.py
+│   ├── buzzer_config.py
+│   └── lcd_config.py
 ├── devices/                    # Device logic
-│   ├── button\_device.py
-│   ├── fan\_device.py
-│   ├── buzzer\_device.py
-│   └── lcd\_device.py
+│   ├── button_device.py
+│   ├── fan_device.py
+│   ├── buzzer_device.py
+│   └── lcd_device.py
 ├── core/                       # MQTT client and broker resolver
-│   ├── mqtt\_client.py
+│   ├── mqtt_client.py
 │   └── broker.py
 └── hardware/
-└── gpio.py                     # GPIO pin mapping
+    └── gpio.py                 # GPIO pin mapping
 
 ````
 
